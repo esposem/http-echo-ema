@@ -27,7 +27,7 @@ spec:
             runtimeClassName: "kata-remote"
             initContainers:
               - name: initcontainer
-                image: quay.io/pezhang/kbs-client:latest
+                image: registry.access.redhat.com/ubi9/ubi:9.3
                 imagePullPolicy: Always
                 securityContext:
                   privileged: true
