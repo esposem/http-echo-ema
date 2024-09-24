@@ -1,0 +1,36 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: mutate-runtimeclass-on-scale
+spec:
+  rules:
+    - name: change-runtimeclass-on-new-pod
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - default
+              selector:
+                matchLabels:
+                  app: ema-http-echo
+      preconditions:
+        all:
+          # Ensure that the Pod was created by a Deployment
+          - key: "{{ request.object.metadata.ownerReferences[0].kind }}"
+            operator: Equals
+            value: "ReplicaSet"
+      mutate:
+        patchStrategicMerge:
+          spec:
+            runtimeClassName: "kata-remote"
+            initContainers:
+              - name: initcontainer
+                image: quay.io/pezhang/kbs-client:latest
+                imagePullPolicy: Always
+                securityContext:
+                  privileged: true
+                command: ["sh", "-c"]
+                args:
+                  - ip link set vxlan0  type vxlan remote <ip>
