@@ -2,18 +2,18 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   namespace: default
-  name: 'ema-http-echo'
+  name: 'http-echo'
 spec:
   selector:
     matchLabels:
-      app: ema-http-echo
+      app: http-echo
   replicas: 1
   template:
     metadata:
       labels:
-        app: ema-http-echo
+        app: http-echo
     spec:
-      runtimeClassName: kata
+      # runtimeClassName: kata
       containers:
         - name: http-container
           image: >-
@@ -26,6 +26,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            - name: KATACLASS
+              value: kata
   strategy:
     type: RollingUpdate
     rollingUpdate:

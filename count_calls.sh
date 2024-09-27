@@ -2,7 +2,7 @@
 
 set -e
 
-APP_URL=$(oc get routes/ema-http-echo-service -o jsonpath='{.spec.host}')
+APP_URL=$(oc get routes/http-echo-service -o jsonpath='{.spec.host}')
 
 declare -A string_set
 
@@ -15,11 +15,12 @@ add_string() {
     fi
 }
 
-for pc in $(seq 1 100); do
-    x=$(curl -s $APP_URL | awk -F '-' '{print $NF}')
-    add_string $x
-    clear
-    for str in "${!string_set[@]}"; do
-        echo "# of pod $str replies: ${string_set[$str]}"
-    done
+for pc in $(seq 1 100000); do
+    curl -s $APP_URL > /dev/null
+    # x=$(curl -s $APP_URL | awk -F '-' '{print $NF}')
+    # add_string $x
+    # clear
+    # for str in "${!string_set[@]}"; do
+    #     echo "# of pod $str replies: ${string_set[$str]}"
+    # done
 done
