@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloud-deployment
+spec:
+  replicas: 0
+  selector:
+    matchLabels:
+      app: my-web-app
+  template:
+    metadata:
+      labels:
+        app: my-web-app
+        environment: cloud
+    spec:
+      runtimeClassName: kata-remote
+      initContainers:
+        - name: initcontainer
+          image: quay.io/pezhang/script-initializer:latest
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+          command: ["sh", "-c"]
+          args:
+            - ip link set vxlan0  type vxlan remote 192.168.10.3
+      containers:
+      - name: my-web-app
+        image: quay.io/eesposit/http-echo-ema:latest
+        env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: ATTESTATION
+          value: "0"
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        securityContext:
+          privileged: true

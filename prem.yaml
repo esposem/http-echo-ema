@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: on-prem-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-web-app
+  template:
+    metadata:
+      labels:
+        app: my-web-app
+    spec:
+      containers:
+      - name: my-web-app
+        image: quay.io/eesposit/http-echo-ema:latest
+        resources:
+          request:
+            memory: "1Gi"
+          limits:
+            memory: "1Gi"
+        env:
+        - name: HOSTNAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.name
+        - name: ATTESTATION
+          value: "0"
+        ports:
+        - containerPort: 8080
+        securityContext:
+            privileged: true
