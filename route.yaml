@@ -1,0 +1,13 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: my-web-app-route
+  namespace: default
+  labels:
+    app: my-web-app
+spec:
+  to:
+    kind: Service
+    name: my-web-app-service
+  port:
+    targetPort: 8888

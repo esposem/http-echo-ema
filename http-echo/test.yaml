@@ -29,7 +29,7 @@ spec:
         - name: DD_MB_SIZE
           value: "100"
         - name: SLEEP_SEC
-          value: "0"
+          value: "50"
       ports:
         - containerPort: 8080
       securityContext:

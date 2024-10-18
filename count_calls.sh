@@ -16,11 +16,11 @@ add_string() {
 }
 
 for pc in $(seq 1 100000); do
-    curl -s $APP_URL > /dev/null
-    # x=$(curl -s $APP_URL | awk -F '-' '{print $NF}')
-    # add_string $x
-    # clear
-    # for str in "${!string_set[@]}"; do
-    #     echo "# of pod $str replies: ${string_set[$str]}"
-    # done
+    # curl -s $APP_URL > /dev/null
+    x=$(curl -s $APP_URL | awk -F '-' '{print $NF}')
+    add_string $x
+    clear
+    for str in "${!string_set[@]}"; do
+        echo "# of pod $str replies: ${string_set[$str]}"
+    done
 done

@@ -12,41 +12,12 @@ import (
 	"time"
 )
 
-func memoryStress() {
+func occupy_memory(randomFileName string) {
 	fileSizeMB := os.Getenv("DD_MB_SIZE")
 	if fileSizeMB == "" {
 		fileSizeMB = "60000"
 	}
 	fmt.Printf("File size set to %s MB.\n", fileSizeMB)
-
-	sleepTime := os.Getenv("SLEEP_SEC")
-	if sleepTime == "" {
-		sleepTime = "60"
-	}
-	fmt.Printf("Sleep set to %s MB.\n", sleepTime)
-
-	// 1. Directory creation with check if it already exists
-	dir := "/tmp/pezhang"
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		// Directory does not exist, so create it
-		err := os.Mkdir(dir, 0755)
-		if err != nil {
-			fmt.Printf("Error creating directory: %v\n", err)
-			return
-		}
-	}
-
-	// 2. Mount tmpfs to /tmp/pezhang
-	err := syscall.Mount("tmpfs", dir, "tmpfs", 0, "")
-	if err != nil {
-		// Check if already mounted (mount syscall can fail if it's already mounted)
-		fmt.Printf("Error mounting tmpfs: %v\n", err)
-		return
-	}
-
-	// 3. Generate a random file name
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	randomFileName := fmt.Sprintf("%s/%d", dir, rng.Intn(1000000))
 
 	// Convert fileSizeMB to an integer to validate input
 	size, err := strconv.Atoi(fileSizeMB)
@@ -65,6 +36,14 @@ func memoryStress() {
 		return
 	}
 	fmt.Printf("Created %sMB file at %s.\n", fileSizeMB, randomFileName)
+}
+
+func free_memory(randomFileName string) {
+	sleepTime := os.Getenv("SLEEP_SEC")
+	if sleepTime == "" {
+		sleepTime = "60"
+	}
+	fmt.Printf("Sleep set to %s MB.\n", sleepTime)
 
 	// Convert fileSizeMB to an integer to validate input
 	seconds, err := strconv.Atoi(sleepTime)
@@ -90,6 +69,28 @@ func memoryStress() {
 }
 
 func helloHandler(w http.ResponseWriter, r *http.Request) {
+	// 1. Directory creation with check if it already exists
+	dir := "/tmp/pezhang"
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		// Directory does not exist, so create it
+		err := os.Mkdir(dir, 0755)
+		if err != nil {
+			fmt.Printf("Error creating directory: %v\n", err)
+			return
+		}
+	}
+
+	// 2. Mount tmpfs to /tmp/pezhang
+	err := syscall.Mount("tmpfs", dir, "tmpfs", 0, "")
+	if err != nil {
+		// Check if already mounted (mount syscall can fail if it's already mounted)
+		fmt.Printf("Error mounting tmpfs: %v\n", err)
+		return
+	}
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	randomFileName := fmt.Sprintf("%s/%d", dir, rng.Intn(1000000))
+
 	response := os.Getenv("HOSTNAME")
 	if len(response) == 0 {
 		response = "Hello OpenShift!"
@@ -107,7 +108,8 @@ func helloHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, response)
 	fmt.Println("Servicing request.")
 
-	memoryStress()
+	occupy_memory((randomFileName))
+	go free_memory(randomFileName)
 }
 
 func listenAndServe(port string) {
@@ -119,6 +121,12 @@ func listenAndServe(port string) {
 }
 
 func main() {
+	sleepTime := os.Getenv("SLEEP_SEC")
+	fmt.Printf("Sleep set to %s MB.\n", sleepTime)
+
+	fileSizeMB := os.Getenv("DD_MB_SIZE")
+	fmt.Printf("File size set to %s MB.\n", fileSizeMB)
+
 	// memoryStress()
 	http.HandleFunc("/", helloHandler)
 	port := os.Getenv("PORT")
