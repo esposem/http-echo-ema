@@ -17,6 +17,6 @@ go build  -o http-echo -ldflags "-w -extldflags '-static'" -tags netgo http-echo
 # 5. rm the biaries
 # rm -f http-echo
 
-docker build -t quay.io/eesposit/http-echo-ema .
+docker build -t quay.io/eesposit/http-echo-ema:latest .
 
-docker push quay.io/eesposit/http-echo-ema
+docker push quay.io/eesposit/http-echo-ema:latest

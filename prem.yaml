@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: on-prem-deployment
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: my-web-app
@@ -26,12 +26,19 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.name
+        - name: MEMORY_LIMITS
+          valueFrom:
+            resourceFieldRef:
+              containerName: my-web-app
+              resource: limits.memory
         - name: ATTESTATION
           value: "0"
         - name: DD_MB_SIZE
           value: "100"
-        - name: SLEEP_SEC
-          value: "0"
+        - name: MAX_MEMORY_STRESS_PERC
+          value: "80"
+        # - name: SLEEP_SEC
+        #   value: "0"
         ports:
         - containerPort: 8080
         securityContext:

@@ -12,55 +12,26 @@ import (
 	"time"
 )
 
-func occupy_memory(randomFileName string) {
-	fileSizeMB := os.Getenv("DD_MB_SIZE")
-	if fileSizeMB == "" {
-		fileSizeMB = "60000"
-	}
-	fmt.Printf("File size set to %s MB.\n", fileSizeMB)
+var MemoryTotalMb int64 = 0
+var MemoryOccMb int64 = 0
+var fileSizeMBInt int = 0
+var memStressInt int = 0
+var stop_allocating bool = false
 
-	// Convert fileSizeMB to an integer to validate input
-	size, err := strconv.Atoi(fileSizeMB)
-	if err != nil {
-		fmt.Printf("Invalid DD_MB_SIZE value: %v using default 60000\n", err)
-		size = 60000
+func sleep(sleepTime string) int {
+	if sleepTime == "0" {
+		return 0
 	}
 
-	// Create file with dd command using random file name
-	cmd := exec.Command("dd", "if=/dev/zero", fmt.Sprintf("of=%s", randomFileName), "bs=1M", fmt.Sprintf("count=%d", size))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err = cmd.Run()
-	if err != nil {
-		fmt.Printf("Error running dd command: %v\n", err)
-		return
-	}
-	fmt.Printf("Created %sMB file at %s.\n", fileSizeMB, randomFileName)
+	seconds := env_var_int(sleepTime, "sleep", 60)
+	fmt.Printf("Sleeping for %d sec...\n", seconds)
+	time.Sleep(time.Duration(seconds) * time.Second)
+
+	return seconds
 }
 
 func free_memory(randomFileName string) {
-	sleepTime := os.Getenv("SLEEP_SEC")
-	if sleepTime == "" {
-		sleepTime = "60"
-	}
-	fmt.Printf("Sleep set to %s MB.\n", sleepTime)
-
-	// Convert fileSizeMB to an integer to validate input
-	seconds, err := strconv.Atoi(sleepTime)
-	if err != nil {
-		fmt.Printf("Invalid SLEEP_SEC value: %v using default 60\n", err)
-		seconds = 60
-	}
-
-	if sleepTime == "0" {
-		return
-	}
-
-	fmt.Println("Sleeping for %s sec...", sleepTime)
-	time.Sleep(time.Duration(seconds) * time.Second)
-
-	// 6. Delete the file after sleep
-	err = os.Remove(randomFileName)
+	err := os.Remove(randomFileName)
 	if err != nil {
 		fmt.Printf("Error deleting file %s: %v\n", randomFileName, err)
 		return
@@ -68,11 +39,53 @@ func free_memory(randomFileName string) {
 	fmt.Printf("File %s deleted, memory restored.\n", randomFileName)
 }
 
+func get_env_var(name string, empty string, def string) string {
+	env := os.Getenv(name)
+	if env == empty {
+		env = def
+	}
+	return env
+}
+
+func env_var_int(name string, v string, def int) int {
+	size, err := strconv.Atoi(name)
+	if err != nil {
+		fmt.Printf("Invalid %s value: %v using default %d\n", v, err, def)
+		size = def
+	}
+	return size
+}
+
+func occupy_memory(randomFileName string) {
+	if stop_allocating == false {
+		MemoryOccMb += int64(fileSizeMBInt)
+	}
+	memory_occ := float64(MemoryOccMb * 100 / MemoryTotalMb)
+	fmt.Printf("Memory occupied: %f%%\n", memory_occ)
+
+	if memory_occ > float64(memStressInt) {
+		if stop_allocating == false {
+			/* Don't overload the server memory, don't increase memory anymore */
+			fmt.Println("#### Stopping allocation to prevent server from going OOMKilled ####")
+			stop_allocating = true
+		}
+		return
+	}
+
+	cmd := exec.Command("dd", "if=/dev/zero", fmt.Sprintf("of=%s", randomFileName), "bs=1M", fmt.Sprintf("count=%d", fileSizeMBInt))
+	// cmd.Stdout = os.Stdout
+	// cmd.Stderr = os.Stderr
+	err := cmd.Run()
+	if err != nil {
+		fmt.Printf("Error running dd command: %v\n", err)
+		return
+	}
+	// fmt.Printf("Created %sMB file at %s.\n", fileSizeMBInt, randomFileName)
+}
+
 func helloHandler(w http.ResponseWriter, r *http.Request) {
-	// 1. Directory creation with check if it already exists
 	dir := "/tmp/pezhang"
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		// Directory does not exist, so create it
 		err := os.Mkdir(dir, 0755)
 		if err != nil {
 			fmt.Printf("Error creating directory: %v\n", err)
@@ -80,10 +93,8 @@ func helloHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// 2. Mount tmpfs to /tmp/pezhang
 	err := syscall.Mount("tmpfs", dir, "tmpfs", 0, "")
 	if err != nil {
-		// Check if already mounted (mount syscall can fail if it's already mounted)
 		fmt.Printf("Error mounting tmpfs: %v\n", err)
 		return
 	}
@@ -91,12 +102,8 @@ func helloHandler(w http.ResponseWriter, r *http.Request) {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	randomFileName := fmt.Sprintf("%s/%d", dir, rng.Intn(1000000))
 
-	response := os.Getenv("HOSTNAME")
-	if len(response) == 0 {
-		response = "Hello OpenShift!"
-	} else {
-		response = "Service handled by pod " + response
-	}
+	host := get_env_var("HOSTNAME", "", "???")
+	response := "Service handled by pod " + host
 
 	// Echo back the port the request was received on
 	// via a "request-port" header.
@@ -106,10 +113,15 @@ func helloHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprintln(w, response)
-	fmt.Println("Servicing request.")
+	fmt.Printf("---------------------------------\n")
+	fmt.Printf("%s: processing request.\n", host)
 
 	occupy_memory((randomFileName))
-	go free_memory(randomFileName)
+	// sleepTime := get_env_var("SLEEP_SEC", "", "60")
+	// sl := sleep(sleepTime)
+	// if sl > 0 {
+	// 	free_memory(randomFileName)
+	// }
 }
 
 func listenAndServe(port string) {
@@ -120,14 +132,32 @@ func listenAndServe(port string) {
 	}
 }
 
-func main() {
-	sleepTime := os.Getenv("SLEEP_SEC")
-	fmt.Printf("Sleep set to %s MB.\n", sleepTime)
+func parseMemoryString(memoryStr string) int64 {
+	value, err := strconv.ParseInt(memoryStr, 10, 64)
+	if err != nil {
+		fmt.Printf("invalid memory format: %s\n", memoryStr)
+		return 0
+	}
 
-	fileSizeMB := os.Getenv("DD_MB_SIZE")
+	return value / (1024 * 1024)
+}
+
+func main() {
+	// sleepTime := get_env_var("SLEEP_SEC", "", "60")
+	// fmt.Printf("Sleep set to %s sec.\n", sleepTime)
+
+	MemoryTotal := get_env_var("MEMORY_LIMITS", "", "???")
+	MemoryTotalMb = parseMemoryString(MemoryTotal)
+	fmt.Printf("Memory available in this pod is %d Mb.\n", MemoryTotalMb)
+
+	fileSizeMB := get_env_var("DD_MB_SIZE", "", "60000")
+	fileSizeMBInt = env_var_int(fileSizeMB, "DD_MB_SIZE", 60000)
 	fmt.Printf("File size set to %s MB.\n", fileSizeMB)
 
-	// memoryStress()
+	memStress := get_env_var("MAX_MEMORY_STRESS_PERC", "", "80")
+	memStressInt = env_var_int(memStress, "MAX_MEMORY_STRESS_PERC", 80)
+	fmt.Printf("Max memory stress set to %s%%.\n", memStress)
+
 	http.HandleFunc("/", helloHandler)
 	port := os.Getenv("PORT")
 	if len(port) == 0 {
