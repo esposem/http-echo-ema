@@ -63,12 +63,7 @@ func occupy_memory(randomFileName string) {
 	memory_occ := float64(MemoryOccMb * 100 / MemoryTotalMb)
 	fmt.Printf("Memory occupied: %f%%\n", memory_occ)
 
-	if memory_occ > float64(memStressInt) {
-		if stop_allocating == false {
-			/* Don't overload the server memory, don't increase memory anymore */
-			fmt.Println("#### Stopping allocation to prevent server from going OOMKilled ####")
-			stop_allocating = true
-		}
+	if stop_allocating {
 		return
 	}
 
@@ -78,6 +73,15 @@ func occupy_memory(randomFileName string) {
 	err := cmd.Run()
 	if err != nil {
 		fmt.Printf("Error running dd command: %v\n", err)
+		return
+	}
+
+	if memory_occ > float64(memStressInt) {
+		if stop_allocating == false {
+			/* Don't overload the server memory, don't increase memory anymore */
+			fmt.Println("#### Stopping allocation to prevent server from going OOMKilled ####")
+			stop_allocating = true
+		}
 		return
 	}
 	// fmt.Printf("Created %sMB file at %s.\n", fileSizeMBInt, randomFileName)
