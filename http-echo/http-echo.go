@@ -18,6 +18,10 @@ var fileSizeMBInt int = 0
 var memStressInt int = 0
 var stop_allocating bool = false
 
+const DEFAULT_MEM_STRESS string = "80"
+const DEFAULT_DD_MB_SIZE string = "0"
+const DEFAULT_MEMORY_LIMITS string = "1073741824"
+
 func sleep(sleepTime string) int {
 	if sleepTime == "0" {
 		return 0
@@ -57,6 +61,10 @@ func env_var_int(name string, v string, def int) int {
 }
 
 func occupy_memory(randomFileName string) {
+	if fileSizeMBInt == 0 {
+		return
+	}
+
 	if stop_allocating == false {
 		MemoryOccMb += int64(fileSizeMBInt)
 	}
@@ -150,16 +158,18 @@ func main() {
 	// sleepTime := get_env_var("SLEEP_SEC", "", "60")
 	// fmt.Printf("Sleep set to %s sec.\n", sleepTime)
 
-	MemoryTotal := get_env_var("MEMORY_LIMITS", "", "???")
+	MemoryTotal := get_env_var("MEMORY_LIMITS", "", DEFAULT_MEMORY_LIMITS)
 	MemoryTotalMb = parseMemoryString(MemoryTotal)
 	fmt.Printf("Memory available in this pod is %d Mb.\n", MemoryTotalMb)
 
-	fileSizeMB := get_env_var("DD_MB_SIZE", "", "60000")
-	fileSizeMBInt = env_var_int(fileSizeMB, "DD_MB_SIZE", 60000)
+	fileSizeMB := get_env_var("DD_MB_SIZE", "", DEFAULT_DD_MB_SIZE)
+	i, _ := strconv.Atoi(DEFAULT_DD_MB_SIZE)
+	fileSizeMBInt = env_var_int(fileSizeMB, "DD_MB_SIZE", i)
 	fmt.Printf("File size set to %s MB.\n", fileSizeMB)
 
-	memStress := get_env_var("MAX_MEMORY_STRESS_PERC", "", "80")
-	memStressInt = env_var_int(memStress, "MAX_MEMORY_STRESS_PERC", 80)
+	memStress := get_env_var("MAX_MEMORY_STRESS_PERC", "", DEFAULT_MEM_STRESS)
+	i, _ = strconv.Atoi(DEFAULT_MEM_STRESS)
+	memStressInt = env_var_int(memStress, "MAX_MEMORY_STRESS_PERC", i)
 	fmt.Printf("Max memory stress set to %s%%.\n", memStress)
 
 	http.HandleFunc("/", helloHandler)

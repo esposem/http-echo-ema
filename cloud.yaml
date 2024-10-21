@@ -40,10 +40,8 @@ spec:
           value: "0"
         - name: DD_MB_SIZE
           value: "100"
-        - name: MAX_MEMORY_STRESS_PERC
-          value: "80"
-        # - name: SLEEP_SEC
-        #   value: "0"
+        # - name: MAX_MEMORY_STRESS_PERC
+        #   value: "80"
         ports:
         - containerPort: 8080
           protocol: TCP
